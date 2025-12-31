@@ -16,6 +16,9 @@ from security import verify_access_token, create_access_token, verify_password
 app = FastAPI(title="Todo App API", version="1.0.0")
 
 # Add CORS middleware
+import os
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -26,6 +29,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
         "http://127.0.0.1:3002",
+        frontend_url,  # Production frontend URL from env
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -63,9 +67,14 @@ def get_current_user_from_header(authorization: str = Header(None)) -> UUID:
 
     return user_id
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+# Only run database initialization in non-serverless environments
+# For Vercel serverless functions, database setup should be handled separately
+import os
+
+if os.getenv("VERCEL", "false").lower() != "1":
+    @app.on_event("startup")
+    def on_startup():
+        create_db_and_tables()
 
 # Authentication Endpoints
 @app.post("/api/auth/signup", response_model=TokenResponse)
