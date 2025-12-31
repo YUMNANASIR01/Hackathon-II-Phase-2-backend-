@@ -17,7 +17,7 @@ app = FastAPI(title="Todo App API", version="1.0.0")
 
 # Add CORS middleware
 import os
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+frontend_url = os.getenv("FRONTEND_URL", "").strip()
 
 # Build allowed origins list
 allowed_origins = [
@@ -29,11 +29,16 @@ allowed_origins = [
     "http://127.0.0.1:3001",
     "http://127.0.0.1:3002",
     "https://localhost:3000",
+    "https://hackathon-2-phase-2-one.vercel.app",  # Production frontend
 ]
 
-# Add production frontend URL if set
+# Add production frontend URL from env if set and not already in list
 if frontend_url and frontend_url not in allowed_origins:
     allowed_origins.append(frontend_url)
+
+# For debugging: print CORS origins
+print(f"[CORS Config] Frontend URL from env: {frontend_url}")
+print(f"[CORS Config] Allowed origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,

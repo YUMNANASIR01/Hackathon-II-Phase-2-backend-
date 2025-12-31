@@ -69,13 +69,14 @@ def create_task(db: Session, task: TaskCreate, user_id: UUID) -> Task:
     return db_task
 
 def update_task(db: Session, task_id: int, task_in: TaskUpdate, user_id: UUID) -> Optional[Task]:
+    from datetime import timezone
     db_task = get_task(db, task_id, user_id)
     if not db_task:
         return None
     task_data = task_in.dict(exclude_unset=True)
     for key, value in task_data.items():
         setattr(db_task, key, value)
-    db_task.updated_at = datetime.utcnow()
+    db_task.updated_at = datetime.now(timezone.utc)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
