@@ -40,7 +40,7 @@ def main():
         else:
             user = crud.create_user(db, UserCreate(
                 email="demo@test.com",
-                password="demo123",
+                password=os.getenv("DEMO_USER_PASSWORD", "demo123"),
                 name="Demo User"
             ))
             print(f"      Created user: {user.email}")
