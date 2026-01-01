@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
@@ -15,14 +16,29 @@ from security import verify_access_token, create_access_token, verify_password
 
 app = FastAPI(title="Todo App API", version="1.0.0")
 
-# Add CORS middleware - Allow all origins for now (will restrict later)
+# Add CORS middleware - explicitly allow the frontend origin causing issues
+# This is a more direct approach to fix the CORS issue
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=".*",  # Allow all origins temporarily
+    allow_origins=[
+        "http://localhost:3002",  # The specific origin mentioned in the error
+        "http://localhost:3000",  # Default Next.js dev server
+        "http://localhost:3001",  # Alternative port for Next.js dev server
+        "http://127.0.0.1:3000",  # Alternative localhost format
+        "http://127.0.0.1:3002",  # Alternative localhost format
+        "http://127.0.0.1:3001",  # Alternative localhost format
+        "http://localhost:8000",  # Allow same origin (for testing)
+        "https://*.vercel.app",   # Allow Vercel deployments
+        "*"  # Allow all origins as fallback during development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Add exposed headers to include authorization in preflight response
+    expose_headers=["Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"]
 )
+
+print("[FastAPI] CORS middleware configured to allow frontend origins")
 
 # JWT verification dependency
 def get_current_user(token: str = None) -> UUID:
@@ -57,7 +73,6 @@ def get_current_user_from_header(authorization: str = Header(None)) -> UUID:
 
 # Only run database initialization in non-serverless environments
 # For Vercel serverless functions, database setup should be handled separately
-import os
 
 if os.getenv("VERCEL", "false").lower() != "1":
     @app.on_event("startup")

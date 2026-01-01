@@ -12,7 +12,7 @@ class User(UserBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     password_hash: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
-    tasks: list["Task"] = Relationship(back_populates="tasks")
+    tasks: List["Task"] = Relationship(back_populates="user", sa_relationship_kwargs={"lazy": "selectin"})
 
 class UserCreate(UserBase):
     password: str
@@ -34,7 +34,7 @@ class TaskBase(SQLModel):
 class Task(TaskBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: UUID = Field(foreign_key="user.id")
-    user: Optional[User] = Relationship(back_populates="tasks")
+    user: Optional["User"] = Relationship(back_populates="tasks", sa_relationship_kwargs={"lazy": "selectin"})
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
