@@ -73,7 +73,13 @@ def get_current_user_from_header(authorization: str = Header(None)) -> UUID:
 
 # Initialize database tables for all environments including Vercel serverless functions
 # For Vercel, we need to ensure tables exist before handling requests
-create_db_and_tables()
+try:
+    create_db_and_tables()
+    print("[Database] Tables created successfully")
+except Exception as e:
+    print(f"[Database] Error creating tables: {str(e)}")
+    # In serverless environments, we might not be able to create tables at import time
+    # The tables will be created when the first request is processed
 
 # For non-serverless environments, we can use the startup event
 if os.getenv("VERCEL", "false").lower() != "1":
@@ -149,7 +155,11 @@ def signout():
 # Task Endpoints
 @app.post("/api/tasks/", response_model=TaskRead)
 def create_task(task: TaskCreate, user_id: UUID = Depends(get_current_user_from_header), db: Session = Depends(get_session)):
-    return crud.create_task(db=db, task=task, user_id=user_id)
+    try:
+        return crud.create_task(db=db, task=task, user_id=user_id)
+    except Exception as e:
+        print(f"Create task error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")
 
 @app.get("/api/tasks/", response_model=TaskListResponse)
 def read_tasks(
@@ -160,38 +170,66 @@ def read_tasks(
     user_id: UUID = Depends(get_current_user_from_header),
     db: Session = Depends(get_session)
 ):
-    tasks = crud.get_tasks(db, user_id=user_id, status=status, sort=sort, skip=skip, limit=limit)
-    total = crud.get_tasks_count(db, user_id=user_id, status=status)
-    return TaskListResponse(items=tasks, total=total, limit=limit, offset=skip)
+    try:
+        tasks = crud.get_tasks(db, user_id=user_id, status=status, sort=sort, skip=skip, limit=limit)
+        total = crud.get_tasks_count(db, user_id=user_id, status=status)
+        return TaskListResponse(items=tasks, total=total, limit=limit, offset=skip)
+    except Exception as e:
+        print(f"Read tasks error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to read tasks: {str(e)}")
 
 @app.get("/api/tasks/{task_id}", response_model=TaskRead)
 def read_task(task_id: int, user_id: UUID = Depends(get_current_user_from_header), db: Session = Depends(get_session)):
-    db_task = crud.get_task(db, task_id=task_id, user_id=user_id)
-    if db_task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return db_task
+    try:
+        db_task = crud.get_task(db, task_id=task_id, user_id=user_id)
+        if db_task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return db_task
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Read task error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to read task: {str(e)}")
 
 @app.put("/api/tasks/{task_id}", response_model=TaskRead)
 def update_task(task_id: int, task: TaskUpdate, user_id: UUID = Depends(get_current_user_from_header), db: Session = Depends(get_session)):
-    db_task = crud.update_task(db, task_id=task_id, task_in=task, user_id=user_id)
-    if db_task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return db_task
+    try:
+        db_task = crud.update_task(db, task_id=task_id, task_in=task, user_id=user_id)
+        if db_task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return db_task
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Update task error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update task: {str(e)}")
 
 @app.delete("/api/tasks/{task_id}", response_model=TaskRead)
 def delete_task(task_id: int, user_id: UUID = Depends(get_current_user_from_header), db: Session = Depends(get_session)):
-    db_task = crud.delete_task(db, task_id=task_id, user_id=user_id)
-    if db_task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return db_task
+    try:
+        db_task = crud.delete_task(db, task_id=task_id, user_id=user_id)
+        if db_task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return db_task
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Delete task error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete task: {str(e)}")
 
 @app.patch("/api/tasks/{task_id}/complete", response_model=TaskRead)
 def mark_task_complete(task_id: int, user_id: UUID = Depends(get_current_user_from_header), db: Session = Depends(get_session)):
-    task = TaskUpdate(completed=True)
-    db_task = crud.update_task(db, task_id=task_id, task_in=task, user_id=user_id)
-    if db_task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return db_task
+    try:
+        task = TaskUpdate(completed=True)
+        db_task = crud.update_task(db, task_id=task_id, task_in=task, user_id=user_id)
+        if db_task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return db_task
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Mark task complete error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to mark task complete: {str(e)}")
 
 # Health check endpoint
 @app.get("/api/health")

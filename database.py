@@ -27,9 +27,18 @@ if DATABASE_URL.startswith("postgresql"):
     }
 else:
     # For SQLite in serverless, we don't need pooling
+    # But we should still set echo for debugging
     pool_kwargs = {
-        "echo": True  # Enable for debugging
+        "echo": True,  # Enable for debugging
+        "poolclass": None  # No pooling for SQLite
     }
+
+# For serverless, we need to handle the database URL properly
+# If using PostgreSQL, ensure SSL is handled properly
+if DATABASE_URL.startswith("postgresql"):
+    # Add SSL requirements for production databases like Neon
+    if "sslmode" not in DATABASE_URL.lower():
+        DATABASE_URL += "?sslmode=require"
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args, **pool_kwargs)
 
