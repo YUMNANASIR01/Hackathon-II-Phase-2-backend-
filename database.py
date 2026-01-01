@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# For Vercel deployments, we should use a PostgreSQL database
 # Default to a file-based SQLite database if DATABASE_URL is not set
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///tasks.db")
 
@@ -17,15 +18,24 @@ if DATABASE_URL.startswith("sqlite"):
 pool_kwargs = {}
 if DATABASE_URL.startswith("postgresql"):
     pool_kwargs = {
-        "pool_size": 20,
-        "max_overflow": 0,
+        "pool_size": 5,  # Smaller pool size for serverless
+        "max_overflow": 10,
         "pool_pre_ping": True,
         "pool_recycle": 300,
+        "pool_timeout": 30,
+        "echo": True  # Enable for debugging
+    }
+else:
+    # For SQLite in serverless, we don't need pooling
+    pool_kwargs = {
+        "echo": True  # Enable for debugging
     }
 
-engine = create_engine(DATABASE_URL, echo=True, connect_args=connect_args, **pool_kwargs)
+engine = create_engine(DATABASE_URL, connect_args=connect_args, **pool_kwargs)
 
 def create_db_and_tables():
+    # Import all models before creating tables
+    from models import Task, User
     SQLModel.metadata.create_all(engine)
 
 def get_session():

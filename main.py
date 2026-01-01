@@ -71,13 +71,15 @@ def get_current_user_from_header(authorization: str = Header(None)) -> UUID:
 
     return user_id
 
-# Only run database initialization in non-serverless environments
-# For Vercel serverless functions, database setup should be handled separately
+# Initialize database tables for all environments including Vercel serverless functions
+# For Vercel, we need to ensure tables exist before handling requests
+create_db_and_tables()
 
+# For non-serverless environments, we can use the startup event
 if os.getenv("VERCEL", "false").lower() != "1":
     @app.on_event("startup")
     def on_startup():
-        create_db_and_tables()
+        pass  # Tables already created above
 
 # Authentication Endpoints
 @app.post("/api/auth/signup", response_model=TokenResponse)
